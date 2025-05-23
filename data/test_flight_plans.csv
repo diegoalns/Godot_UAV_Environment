@@ -1,0 +1,4 @@
+FlightPlanID,DronePortID,ETD,OriginLat,OriginLon,DestinationLat,DestinationLon,DroneModel,EstimatedFlightTime,Ceiling
+FLIGHT_001,DP1,2024-01-01 08:00:00,40.7128,-74.0060,40.7589,-73.9851,LightQuadcopter,15.5,500
+FLIGHT_002,DP2,2024-01-01 08:05:00,40.7589,-73.9851,40.7128,-74.0060,HeavyQuadcopter,18.2,750
+FLIGHT_003,DP1,2024-01-01 08:10:00,40.7128,-74.0060,40.7829,-73.9654,LightQuadcopter,12.8,400
