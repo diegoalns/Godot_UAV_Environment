@@ -2,6 +2,11 @@ class_name VisualizationSystem
 extends Node3D
 
 var drone_meshes: Dictionary = {}
+var enabled: bool = true
+
+func set_enabled(enable: bool):
+	enabled = enable
+	visible = enable
 
 func _ready():
 	setup_camera()
@@ -20,6 +25,9 @@ func setup_lighting():
 	light.look_at(Vector3(-74000, 0, 41000), Vector3.UP)  # ✅ Now it works
 
 func add_drone(drone: Drone):
+	if not enabled:
+		return
+	
 	var mesh_instance = MeshInstance3D.new()
 	var box_mesh = BoxMesh.new()
 	box_mesh.size = Vector3(8, 1, 12)
@@ -37,5 +45,8 @@ func add_drone(drone: Drone):
 	print("Added visualization for drone %s" % drone.drone_id)
 
 func update_drone_position(drone: Drone):
+	if not enabled:
+		return
+		
 	if drone.drone_id in drone_meshes:
 		drone_meshes[drone.drone_id].position = drone.current_position

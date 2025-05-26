@@ -18,7 +18,8 @@ func update(delta: float):
 	
 	var direction = (destination - current_position).normalized()
 	current_position += direction * speed * delta
+	print("Drone %s at position %s" % [drone_id, str(current_position)])
 	
-	if current_position.distance_to(destination) < 1.0:
+	if current_position.distance_to(destination) < 10.0:
 		completed = true
 		print("Drone %s completed flight" % drone_id)

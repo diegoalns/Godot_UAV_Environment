@@ -4,12 +4,15 @@ extends Control
 signal start_requested
 signal pause_requested
 signal speed_changed(multiplier: float)
+signal headless_mode_changed(enable: bool)
 
 @onready var start_button = Button.new()
 @onready var speed_slider = HSlider.new()
 @onready var status_label = Label.new()
+@onready var headless_checkbox = CheckBox.new()
 
 var is_running = false
+var headless_mode: bool = false
 
 func _ready():
 	setup_ui()
@@ -18,6 +21,11 @@ func setup_ui():
 	# Layout
 	var vbox = VBoxContainer.new()
 	add_child(vbox)
+	
+	# Headless mode toggle
+	headless_checkbox.text = "Headless Mode"
+	headless_checkbox.toggled.connect(_on_headless_toggled)
+	vbox.add_child(headless_checkbox)
 	
 	# Start/Pause button
 	start_button.text = "Start"
@@ -53,3 +61,7 @@ func _on_speed_changed(value: float):
 
 func update_status(text: String):
 	status_label.text = text
+	
+func _on_headless_toggled(pressed: bool):
+	headless_mode = pressed
+	emit_signal("headless_mode_changed", pressed)

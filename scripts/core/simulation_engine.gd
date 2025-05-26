@@ -5,9 +5,13 @@ extends Node
 @onready var flight_plan_manager = FlightPlanManager.new()
 @onready var visualization_system = VisualizationSystem.new()
 @onready var logger = SimpleLogger.new()
+
 var simulation_time: float = 0.0
 var running: bool = false
 var speed_multiplier: float = 1.0
+var time_step: float = 1.0
+var real_runtime: float = 0.0
+var headless_mode: bool = false
 
 func _ready():
 	add_child(visualization_system)
@@ -31,6 +35,7 @@ func _ready():
 	ui.start_requested.connect(_on_start_requested)
 	ui.pause_requested.connect(_on_pause_requested)
 	ui.speed_changed.connect(_on_speed_changed)
+	ui.headless_mode_changed.connect(_on_headless_mode_changed)
 
 func _on_start_requested():
 	running = true
@@ -40,6 +45,10 @@ func _on_pause_requested():
 
 func _on_speed_changed(multiplier: float):
 	speed_multiplier = multiplier
+
+func _on_headless_mode_changed(enabled: bool):
+	headless_mode = enabled
+	visualization_system.set_enabled(!enabled)
 
 func create_real_scenario():
 	var plans = flight_plan_manager.get_flight_plans()
@@ -51,15 +60,17 @@ func create_real_scenario():
 		drone_manager.create_test_drone(plan.id, origin, destination)
 		print("Created drone %s from %s to %s" % [plan.id, origin, destination])
 
-func _process(delta: float):
+func _physics_process(delta: float):
 	if not running:
 		return
 		
-	simulation_time += delta * speed_multiplier
-	drone_manager.update_all(delta * speed_multiplier)
+	simulation_time += time_step * speed_multiplier
+	real_runtime += delta
+	drone_manager.update_all(time_step * speed_multiplier)
 	
 	# Log data
 	logger.update(delta, simulation_time, drone_manager.drones)
 	
-	if int(simulation_time) % 3 == 0 and simulation_time - delta < int(simulation_time):
-		print("Simulation time: %.1f seconds" % simulation_time)
+	#if int(simulation_time) % 3 == 0 and simulation_time - delta < int(simulation_time):
+	print("Simulation time: %.5f seconds" % simulation_time)
+	print("Real runtime: %.5f seconds" % real_runtime)
