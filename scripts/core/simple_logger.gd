@@ -2,7 +2,7 @@ class_name SimpleLogger
 extends Node
 
 var log_file: FileAccess
-var log_interval: float = 1.0  # Log every second
+var log_interval: float = 10.0  # Log every second
 var time_since_log: float = 0.0
 
 func _ready():
@@ -24,8 +24,8 @@ func create_log_file():
 		log_file.store_csv_line(["Time", "DroneID", "X", "Y", "Z", "Completed"])
 		print("Log file created: %s" % filename)
 
-func update(delta: float, sim_time: float, drones: Dictionary):
-	time_since_log += delta
+func update(time_step: float, sim_time: float, drones: Dictionary):
+	time_since_log += time_step
 	
 	if time_since_log >= log_interval:
 		log_drone_states(sim_time, drones)

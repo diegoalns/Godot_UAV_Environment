@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://ifm73qbbqapu"
+
+[deps]
+
+files=["res://data/DP1_DP2_DP3_flight_plans_head.DronePortID.translation", "res://data/DP1_DP2_DP3_flight_plans_head.ETD.translation", "res://data/DP1_DP2_DP3_flight_plans_head.ETD.translation", "res://data/DP1_DP2_DP3_flight_plans_head.OriginLat.translation", "res://data/DP1_DP2_DP3_flight_plans_head.OriginLon.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DestinationLat.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DestinationLon.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DroneModel.translation", "res://data/DP1_DP2_DP3_flight_plans_head.EstimatedFlightTime.translation", "res://data/DP1_DP2_DP3_flight_plans_head.Ceiling.translation"]
+
+source_file="res://data/DP1_DP2_DP3_flight_plans_head.csv"
+dest_files=["res://data/DP1_DP2_DP3_flight_plans_head.DronePortID.translation", "res://data/DP1_DP2_DP3_flight_plans_head.ETD.translation", "res://data/DP1_DP2_DP3_flight_plans_head.ETD.translation", "res://data/DP1_DP2_DP3_flight_plans_head.OriginLat.translation", "res://data/DP1_DP2_DP3_flight_plans_head.OriginLon.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DestinationLat.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DestinationLon.translation", "res://data/DP1_DP2_DP3_flight_plans_head.DroneModel.translation", "res://data/DP1_DP2_DP3_flight_plans_head.EstimatedFlightTime.translation", "res://data/DP1_DP2_DP3_flight_plans_head.Ceiling.translation"]
+
+[params]
+
+compress=true
+delimiter=0

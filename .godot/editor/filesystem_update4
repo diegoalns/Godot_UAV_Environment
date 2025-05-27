@@ -1,6 +1,3 @@
-res://scripts/core/simulation_engine.gd
-res://scripts/ui/simple_ui.gd
 res://scenes/main/main.tscn
-res://scripts/core/visualization_system.gd
 res://scenes/ui/simple_ui.tscn
-res://scripts/drone/drone.gd
+res://scripts/core/simulation_engine.gd

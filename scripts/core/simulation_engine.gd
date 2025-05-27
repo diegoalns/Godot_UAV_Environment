@@ -6,12 +6,15 @@ extends Node
 @onready var visualization_system = VisualizationSystem.new()
 @onready var logger = SimpleLogger.new()
 
+
 var simulation_time: float = 0.0
 var running: bool = false
 var speed_multiplier: float = 1.0
 var time_step: float = 1.0
 var real_runtime: float = 0.0
 var headless_mode: bool = false
+var plans: Array = [] 
+
 
 func _ready():
 	add_child(visualization_system)
@@ -21,10 +24,13 @@ func _ready():
 
 	# Connect systems
 	drone_manager.set_visualization_system(visualization_system)
+	
+	flight_plan_manager.load_flight_plans()
 
 	await get_tree().process_frame
-	create_real_scenario()
-
+	
+	plans = flight_plan_manager.get_flight_plans()
+	
 	# Add UI
 	var canvas_layer = CanvasLayer.new()
 	var ui = SimpleUI.new()
@@ -50,26 +56,31 @@ func _on_headless_mode_changed(enabled: bool):
 	headless_mode = enabled
 	visualization_system.set_enabled(!enabled)
 
-func create_real_scenario():
-	var plans = flight_plan_manager.get_flight_plans()
+#func create_real_scenario():
+	#var plans = flight_plan_manager.get_flight_plans()
 	
-	for plan in plans:
-		var origin = flight_plan_manager.latlon_to_position(plan.origin_lat, plan.origin_lon)
-		var destination = flight_plan_manager.latlon_to_position(plan.dest_lat, plan.dest_lon)
-		
-		drone_manager.create_test_drone(plan.id, origin, destination)
-		print("Created drone %s from %s to %s" % [plan.id, origin, destination])
-
 func _physics_process(delta: float):
 	if not running:
 		return
 		
+	# Simulation time and real runtime calculation
 	simulation_time += time_step * speed_multiplier
 	real_runtime += delta
+	
+	# Launch the drones when ETD
+	for plan in plans:
+		if plan.etd_seconds == simulation_time and plan.created == false:
+			plan.created = true
+			var origin = flight_plan_manager.latlon_to_position(plan.origin_lat, plan.origin_lon)
+			var destination = flight_plan_manager.latlon_to_position(plan.dest_lat, plan.dest_lon)
+			drone_manager.create_test_drone(plan.id, origin, destination)
+			print("Created drone %s from %s to %s" % [plan.id, origin, destination])
+	
+	# Update all created drones
 	drone_manager.update_all(time_step * speed_multiplier)
 	
 	# Log data
-	logger.update(delta, simulation_time, drone_manager.drones)
+	logger.update(time_step, simulation_time, drone_manager.drones)
 	
 	#if int(simulation_time) % 3 == 0 and simulation_time - delta < int(simulation_time):
 	print("Simulation time: %.5f seconds" % simulation_time)
