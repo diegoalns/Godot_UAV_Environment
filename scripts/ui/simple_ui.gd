@@ -37,7 +37,7 @@ func setup_ui():
 	speed_label.text = "Speed: "
 	vbox.add_child(speed_label)
 	
-	speed_slider.min_value = 0.1
+	speed_slider.min_value = 0.5
 	speed_slider.max_value = 5.0
 	speed_slider.value = 1.0
 	speed_slider.value_changed.connect(_on_speed_changed)

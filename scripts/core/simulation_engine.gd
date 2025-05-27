@@ -1,6 +1,8 @@
 class_name SimulationEngine
 extends Node
 
+
+
 @onready var drone_manager = DroneManager.new()
 @onready var flight_plan_manager = FlightPlanManager.new()
 @onready var visualization_system = VisualizationSystem.new()
@@ -14,6 +16,7 @@ var time_step: float = 1.0
 var real_runtime: float = 0.0
 var headless_mode: bool = false
 var plans: Array = [] 
+
 
 
 func _ready():
@@ -55,11 +58,9 @@ func _on_speed_changed(multiplier: float):
 func _on_headless_mode_changed(enabled: bool):
 	headless_mode = enabled
 	visualization_system.set_enabled(!enabled)
-
-#func create_real_scenario():
-	#var plans = flight_plan_manager.get_flight_plans()
 	
 func _physics_process(delta: float):
+	Engine.physics_ticks_per_second = 30  # Set to 120 physics FPS
 	if not running:
 		return
 		
@@ -73,7 +74,7 @@ func _physics_process(delta: float):
 			plan.created = true
 			var origin = flight_plan_manager.latlon_to_position(plan.origin_lat, plan.origin_lon)
 			var destination = flight_plan_manager.latlon_to_position(plan.dest_lat, plan.dest_lon)
-			drone_manager.create_test_drone(plan.id, origin, destination)
+			drone_manager.create_test_drone(plan.id, origin, destination, plan.model)
 			print("Created drone %s from %s to %s" % [plan.id, origin, destination])
 	
 	# Update all created drones

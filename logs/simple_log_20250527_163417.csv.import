@@ -1,0 +1,15 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://h55talxvr23"
+valid=false
+
+[deps]
+
+source_file="res://logs/simple_log_20250527_163417.csv"
+
+[params]
+
+compress=true
+delimiter=0

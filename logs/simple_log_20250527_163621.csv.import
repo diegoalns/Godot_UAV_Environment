@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://bbne1mfmdm7o6"
+
+[deps]
+
+files=["res://logs/simple_log_20250527_163621.DroneID.translation", "res://logs/simple_log_20250527_163621.X.translation", "res://logs/simple_log_20250527_163621.Y.translation", "res://logs/simple_log_20250527_163621.Z.translation", "res://logs/simple_log_20250527_163621.Completed.translation"]
+
+source_file="res://logs/simple_log_20250527_163621.csv"
+dest_files=["res://logs/simple_log_20250527_163621.DroneID.translation", "res://logs/simple_log_20250527_163621.X.translation", "res://logs/simple_log_20250527_163621.Y.translation", "res://logs/simple_log_20250527_163621.Z.translation", "res://logs/simple_log_20250527_163621.Completed.translation"]
+
+[params]
+
+compress=true
+delimiter=0
