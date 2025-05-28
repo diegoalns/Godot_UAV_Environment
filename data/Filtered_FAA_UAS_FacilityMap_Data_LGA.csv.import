@@ -1,0 +1,17 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dyx61svcbunko"
+
+[deps]
+
+files=["res://data/Filtered_FAA_UAS_FacilityMap_Data_LGA.LATITUDE.translation", "res://data/Filtered_FAA_UAS_FacilityMap_Data_LGA.LONGITUDE.translation"]
+
+source_file="res://data/Filtered_FAA_UAS_FacilityMap_Data_LGA.csv"
+dest_files=["res://data/Filtered_FAA_UAS_FacilityMap_Data_LGA.LATITUDE.translation", "res://data/Filtered_FAA_UAS_FacilityMap_Data_LGA.LONGITUDE.translation"]
+
+[params]
+
+compress=true
+delimiter=0
