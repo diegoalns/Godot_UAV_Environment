@@ -3,6 +3,9 @@ extends Node
 
 var flight_plans: Array = []
 
+const ORIGIN_LAT = 40.55417343
+const ORIGIN_LON = -73.99583928
+
 func _ready():
 	load_flight_plans()
 
@@ -40,4 +43,8 @@ func get_flight_plans() -> Array:
 
 # Simple lat/lon to position conversion
 func latlon_to_position(lat: float, lon: float) -> Vector3:
-	return Vector3(lon * 1000, 0, lat * 1000)
+	var meters_per_deg_lat = 111320.0
+	var meters_per_deg_lon = 111320.0 * cos(deg_to_rad(ORIGIN_LAT))
+	var x = (lon - ORIGIN_LON) * meters_per_deg_lon
+	var z = (lat - ORIGIN_LAT) * meters_per_deg_lat
+	return Vector3(x, 0, z)

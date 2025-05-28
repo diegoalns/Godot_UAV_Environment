@@ -26,3 +26,13 @@ func update_all(delta: float):
 		# Update visualization
 		if visualization_system:
 			visualization_system.update_drone_position(drone)
+
+func remove_completed_drones():
+	var to_remove = []
+	for id in drones.keys():
+		if drones[id].completed:
+			to_remove.append(id)
+	for id in to_remove:
+		var drone = drones[id]
+		drone.queue_free()  # Remove from scene
+		drones.erase(id)    # Remove from dictionary

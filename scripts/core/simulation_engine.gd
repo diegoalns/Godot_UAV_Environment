@@ -1,13 +1,10 @@
 class_name SimulationEngine
 extends Node
 
-
-
 @onready var drone_manager = DroneManager.new()
 @onready var flight_plan_manager = FlightPlanManager.new()
 @onready var visualization_system = VisualizationSystem.new()
 @onready var logger = SimpleLogger.new()
-
 
 var simulation_time: float = 0.0
 var running: bool = false
@@ -79,6 +76,8 @@ func _physics_process(delta: float):
 	
 	# Update all created drones
 	drone_manager.update_all(time_step * speed_multiplier)
+	# Remove completed drones from memory
+	drone_manager.remove_completed_drones()
 	
 	# Log data
 	logger.update(time_step, simulation_time, drone_manager.drones)

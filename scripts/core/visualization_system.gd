@@ -52,22 +52,8 @@ func setup_balloon():
 	collision.shape = shape
 	balloon_ref.add_child(collision)
 	
-	# # Add a visible mesh (optional)
-	# var mesh_instance = MeshInstance3D.new()
-	# var sphere_mesh = SphereMesh.new()
-	# sphere_mesh.radius = 1
-	# sphere_mesh.height = 2.0
-	# mesh_instance.mesh = sphere_mesh
-	
-	# var material = StandardMaterial3D.new()
-	# material.albedo_color = Color(0.8, 0.2, 0.2, 0.8)  # Red balloon
-	# material.flags_transparent = true
-	# sphere_mesh.material = material
-	
-	# balloon_ref.add_child(mesh_instance)
-	
-	# Set initial position
-	balloon_ref.global_position = Vector3(-74000, 100, 41000)
+	# Set initial position at grid origin (0, 100, 0)
+	balloon_ref.global_position = Vector3(10262.88, 300, 8095.922)
 
 func _input(event):
 	# Toggle mouse capture with Escape key

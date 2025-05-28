@@ -1,3 +1,8 @@
 res://scenes/main/main.tscn
 res://scenes/ui/simple_ui.tscn
 res://scripts/core/visualization_system.gd
+res://scripts/core/simulation_engine.gd
+res://scripts/core/flight_plan_manager.gd
+res://scripts/drone/drone.gd
+res://scripts/core/drone_manager.gd
+res://scripts/ui/simple_ui.gd
