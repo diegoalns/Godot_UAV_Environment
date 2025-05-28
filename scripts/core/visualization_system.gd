@@ -6,7 +6,7 @@ var enabled: bool = true
 var balloon_ref: CharacterBody3D = null  # Reference to the balloon
 
 # Movement and control variables
-var move_speed = 5000.0  # Speed for movement
+var move_speed = 100000.0  # Speed for movement
 var rotation_speed = 0.001  # Speed of rotation with mouse
 var mouse_sensitivity = 0.001
 var camera_offset = Vector3(0, 10, 30)  # Offset from balloon position
@@ -148,3 +148,22 @@ func update_drone_position(drone: Drone):
 		
 	if drone.drone_id in drone_meshes:
 		drone_meshes[drone.drone_id].position = drone.current_position
+
+func add_drone_port(dp_position: Vector3, port_id: String):
+	var mesh_instance = MeshInstance3D.new()
+	var box_mesh = BoxMesh.new()
+	box_mesh.size = Vector3(100, 2, 100)
+
+	var material = StandardMaterial3D.new()
+	material.albedo_color = Color(0, 0, 0)  # Black
+	box_mesh.material = material
+	mesh_instance.mesh = box_mesh
+
+	mesh_instance.position = dp_position
+	add_child(mesh_instance)
+	print("drone port %s added added at %s" % [port_id, dp_position])
+
+func move_balloon_to_port(port_position: Vector3):
+	# Optionally apply scale_factor if you use one
+	balloon_ref.global_position = port_position
+	# Optionally reset orientation or camera offset here

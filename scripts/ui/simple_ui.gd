@@ -5,21 +5,34 @@ signal start_requested
 signal pause_requested
 signal speed_changed(multiplier: float)
 signal headless_mode_changed(enable: bool)
+signal port_selected(port_id: String)
 
 @onready var start_button = Button.new()
 @onready var speed_slider = HSlider.new()
 @onready var status_label = Label.new()
 @onready var headless_checkbox = CheckBox.new()
+@onready var port_selector = OptionButton.new()
+@onready var time_label = Label.new()
 
 var is_running = false
 var headless_mode: bool = false
 
 func _ready():
 	setup_ui()
+	self.anchor_left = 0.0
+	self.anchor_right = 1.0
+	self.anchor_top = 0.0
+	self.anchor_bottom = 1.0
+	self.offset_left = 0
+	self.offset_right = 0
+	self.offset_top = 0
+	self.offset_bottom = 0
 
 func setup_ui():
 	# Layout
 	var vbox = VBoxContainer.new()
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(vbox)
 	
 	# Headless mode toggle
@@ -43,9 +56,24 @@ func setup_ui():
 	speed_slider.value_changed.connect(_on_speed_changed)
 	vbox.add_child(speed_slider)
 	
+	# Port selector
+	vbox.add_child(port_selector)
+	port_selector.item_selected.connect(_on_port_selected)
+	
 	# Status
 	status_label.text = "Ready"
 	vbox.add_child(status_label)
+	
+	# Time label (top right)
+	time_label.text = "Sim: 0.00s | Real: 0.00s"
+	time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	time_label.anchor_left = 0
+	time_label.anchor_right = 1.0
+	time_label.anchor_top = 0.0
+	time_label.anchor_bottom = 0.0
+	time_label.offset_right = -10
+	time_label.offset_top = 10
+	add_child(time_label)
 
 func _on_start_pressed():
 	is_running = !is_running
@@ -65,3 +93,15 @@ func update_status(text: String):
 func _on_headless_toggled(pressed: bool):
 	headless_mode = pressed
 	emit_signal("headless_mode_changed", pressed)
+
+func set_drone_ports(port_ids: Array):
+	port_selector.clear()
+	for port_id in port_ids:
+		port_selector.add_item(port_id)
+
+func _on_port_selected(index: int):
+	var port_id = port_selector.get_item_text(index)
+	emit_signal("port_selected", port_id)
+
+func update_time(sim_time: float, real_time: float):
+	time_label.text = "Sim: %.2fs | Real: %.2fs" % [sim_time, real_time]

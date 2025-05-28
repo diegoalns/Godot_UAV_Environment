@@ -13,8 +13,7 @@ var time_step: float = 1.0
 var real_runtime: float = 0.0
 var headless_mode: bool = false
 var plans: Array = [] 
-
-
+var ui: SimpleUI  # Store UI instance for access in _physics_process
 
 func _ready():
 	add_child(visualization_system)
@@ -31,20 +30,33 @@ func _ready():
 	
 	plans = flight_plan_manager.get_flight_plans()
 	
+	# Add drone ports to visualization
+	var ports = flight_plan_manager.get_drone_ports()
+	for port_id in ports.keys():
+		var lat = ports[port_id]["lat"]
+		var lon = ports[port_id]["lon"]
+		var pos = flight_plan_manager.latlon_to_position(lat, lon)
+		visualization_system.add_drone_port(pos, port_id)
+
 	# Add UI
 	var canvas_layer = CanvasLayer.new()
-	var ui = SimpleUI.new()
+	ui = SimpleUI.new()
 	canvas_layer.add_child(ui)
 	add_child(canvas_layer)
-	
+
+	# Set drone ports in UI
+	ui.set_drone_ports(ports.keys())
+
 	# Connect UI signals
 	ui.start_requested.connect(_on_start_requested)
 	ui.pause_requested.connect(_on_pause_requested)
 	ui.speed_changed.connect(_on_speed_changed)
 	ui.headless_mode_changed.connect(_on_headless_mode_changed)
+	ui.port_selected.connect(_on_port_selected)
 
 func _on_start_requested():
 	running = true
+
 
 func _on_pause_requested():
 	running = false
@@ -57,7 +69,7 @@ func _on_headless_mode_changed(enabled: bool):
 	visualization_system.set_enabled(!enabled)
 	
 func _physics_process(delta: float):
-	Engine.physics_ticks_per_second = 30  # Set to 120 physics FPS
+	Engine.physics_ticks_per_second = 600  # Set to 360 physics FPS
 	if not running:
 		return
 		
@@ -81,7 +93,18 @@ func _physics_process(delta: float):
 	
 	# Log data
 	logger.update(time_step, simulation_time, drone_manager.drones)
-	
-	#if int(simulation_time) % 3 == 0 and simulation_time - delta < int(simulation_time):
-	print("Simulation time: %.5f seconds" % simulation_time)
-	print("Real runtime: %.5f seconds" % real_runtime)
+
+	# Update time label in UI
+	ui.update_time(simulation_time, real_runtime)
+
+	#if int(simulation_time) % 1 == 0 and simulation_time - delta < int(simulation_time):
+	# print("Simulation time: %.5f seconds" % simulation_time)
+	# print("Real runtime: %.5f seconds" % real_runtime)
+
+func _on_port_selected(port_id: String):
+	var ports = flight_plan_manager.get_drone_ports()
+	if ports.has(port_id):
+		var lat = ports[port_id]["lat"]
+		var lon = ports[port_id]["lon"]
+		var pos = flight_plan_manager.latlon_to_position(lat, lon)
+		visualization_system.move_balloon_to_port(pos)

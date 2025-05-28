@@ -13,11 +13,9 @@ func create_log_file():
 	if not dir.dir_exists("logs"):
 		dir.make_dir("logs")
 	
-	var datetime = Time.get_datetime_dict_from_system()
-	var filename = "res://logs/simple_log_%d%02d%02d_%02d%02d%02d.csv" % [
-		datetime.year, datetime.month, datetime.day,
-		datetime.hour, datetime.minute, datetime.second
-	]
+	#var datetime = Time.get_datetime_dict_from_system()
+
+	var filename = "res://logs/simple_log.csv"
 	
 	log_file = FileAccess.open(filename, FileAccess.WRITE)
 	if log_file:
