@@ -6,12 +6,14 @@ var enabled: bool = true
 var balloon_ref: CharacterBody3D = null  # Reference to the balloon
 
 # Movement and control variables
-var move_speed = 100000.0  # Speed for movement
+var move_speed = 10000.0  # Speed for movement
 var rotation_speed = 0.001  # Speed of rotation with mouse
 var mouse_sensitivity = 0.001
 var camera_offset = Vector3(0, 10, 30)  # Offset from balloon position
 var mouse_captured = false
 
+# Visualization scale factor
+var visual_scale = 0.005  # Adjust this to make the area more compact
 
 func set_enabled(enable: bool):
 	enabled = enable
@@ -28,7 +30,7 @@ func _ready():
 
 func setup_camera():
 	var camera = Camera3D.new()
-	camera.position = camera_offset  # Set the local offset
+	camera.position = camera_offset * visual_scale  # Set the local offset, scaled
 	camera.current = true
 	balloon_ref.add_child(camera)    # Attach camera to the balloon
 
@@ -48,12 +50,12 @@ func setup_balloon():
 	# Add collision shape
 	var collision = CollisionShape3D.new()
 	var shape = SphereShape3D.new()
-	shape.radius = 5.0
+	shape.radius = 5.0 * visual_scale
 	collision.shape = shape
 	balloon_ref.add_child(collision)
 	
 	# Set initial position at grid origin (0, 100, 0)
-	balloon_ref.global_position = Vector3(10262.88, 300, 8095.922)
+	balloon_ref.global_position = Vector3(10262.88, 300, 8095.922) * visual_scale
 
 func _input(event):
 	# Toggle mouse capture with Escape key
@@ -128,7 +130,7 @@ func add_drone(drone: Drone):
 	
 	var mesh_instance = MeshInstance3D.new()
 	var box_mesh = BoxMesh.new()
-	box_mesh.size = Vector3(8, 1, 12)
+	box_mesh.size = Vector3(100, 1, 100) * visual_scale
 	mesh_instance.mesh = box_mesh
 	
 	# Different colors for different drones
@@ -147,23 +149,23 @@ func update_drone_position(drone: Drone):
 		return
 		
 	if drone.drone_id in drone_meshes:
-		drone_meshes[drone.drone_id].position = drone.current_position
+		drone_meshes[drone.drone_id].position = drone.current_position * visual_scale
 
 func add_drone_port(dp_position: Vector3, port_id: String):
 	var mesh_instance = MeshInstance3D.new()
 	var box_mesh = BoxMesh.new()
-	box_mesh.size = Vector3(100, 2, 100)
+	box_mesh.size = Vector3(500, 2, 500) * visual_scale
 
 	var material = StandardMaterial3D.new()
 	material.albedo_color = Color(0, 0, 0)  # Black
 	box_mesh.material = material
 	mesh_instance.mesh = box_mesh
 
-	mesh_instance.position = dp_position
+	mesh_instance.position = dp_position * visual_scale
 	add_child(mesh_instance)
 	print("drone port %s added added at %s" % [port_id, dp_position])
 
 func move_balloon_to_port(port_position: Vector3):
 	# Optionally apply scale_factor if you use one
-	balloon_ref.global_position = port_position
+	balloon_ref.global_position = port_position * visual_scale
 	# Optionally reset orientation or camera offset here

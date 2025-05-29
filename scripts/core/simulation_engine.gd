@@ -69,7 +69,7 @@ func _on_headless_mode_changed(enabled: bool):
 	visualization_system.set_enabled(!enabled)
 	
 func _physics_process(delta: float):
-	Engine.physics_ticks_per_second = 600  # Set to 360 physics FPS
+	Engine.physics_ticks_per_second = 360  # Set to 360 physics FPS
 	if not running:
 		return
 		
@@ -88,12 +88,13 @@ func _physics_process(delta: float):
 	
 	# Update all created drones
 	drone_manager.update_all(time_step * speed_multiplier)
-	# Remove completed drones from memory
-	drone_manager.remove_completed_drones()
 	
 	# Log data
 	logger.update(time_step, simulation_time, drone_manager.drones)
-
+	
+	# Remove completed drones from memory
+	drone_manager.remove_completed_drones()
+	
 	# Update time label in UI
 	ui.update_time(simulation_time, real_runtime)
 

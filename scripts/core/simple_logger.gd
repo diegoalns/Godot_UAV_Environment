@@ -19,7 +19,7 @@ func create_log_file():
 	
 	log_file = FileAccess.open(filename, FileAccess.WRITE)
 	if log_file:
-		log_file.store_csv_line(["Time", "DroneID", "X", "Y", "Z", "Completed"])
+		log_file.store_csv_line(["Time", "DroneID", "X", "Y", "Z", "Target position", "Target Speed", "Origin Lat", "Origin Lon", "Destination Lat", "Destination Lon", "Completed"])
 		print("Log file created: %s" % filename)
 
 func update(time_step: float, sim_time: float, drones: Dictionary):
@@ -36,10 +36,17 @@ func log_drone_states(sim_time: float, drones: Dictionary):
 	for drone in drones.values():
 		log_file.store_csv_line([
 			"%.2f" % sim_time,
+			#drone.port_id,
 			drone.drone_id,
 			"%.2f" % drone.current_position.x,
 			"%.2f" % drone.current_position.y,
 			"%.2f" % drone.current_position.z,
+			drone.target_position,
+			drone.target_speed,
+			drone.origin_position.x,
+			drone.origin_position.z,
+			drone.destination_position.x,
+			drone.destination_position.z,
 			str(drone.completed)
 		])
 
