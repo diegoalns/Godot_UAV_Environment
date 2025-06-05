@@ -57,7 +57,6 @@ func _ready():
 func _on_start_requested():
 	running = true
 
-
 func _on_pause_requested():
 	running = false
 

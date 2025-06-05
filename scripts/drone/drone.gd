@@ -61,6 +61,27 @@ func initialize(id: String, start: Vector3, end: Vector3, drone_model: String):
 	returning = false
 	current_waypoint_index = 0
 	
+	WebSocketManager.send_message("Hello from Drone %s at position %s to %s" % [drone_id, str(start), str(end)])
+		 	# Send creation message to WebSocket server
+	# var websocket_manager = get_node_or_null("/root/WebSocketManager")
+	# var status = websocket_manager.get_ready_state()
+	# print("From Drone WebSocket status: ", status)
+	
+	#websocket_manager.send_text_message(message)
+
+	# JSON.stringify({
+	# 	"type": "drone_created",
+	# 	"drone_id": drone_id,
+	# 	"model": model,
+	# 	"start_position": [start.x, start.y, start.z],
+	# 	"end_position": [end.x, end.y, end.z]
+	# })
+
+	# if websocket_manager.send_message(message):
+	# 	print("Sent drone creation notification for drone: " + drone_id)
+
+	# Create default route (direct flight with altitude variation)
+
 	# Create default route (direct flight with altitude variation)
 	_create_default_route(start, end)
 	

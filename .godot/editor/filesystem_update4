@@ -1,3 +1,14 @@
+res://logs/simple_log.DroneID.translation
+res://logs/simple_log.X.translation
+res://logs/simple_log.Y.translation
+res://logs/simple_log.Z.translation
+res://logs/simple_log.Target position.translation
+res://logs/simple_log.Target Speed.translation
+res://logs/simple_log.Origin Lat.translation
+res://logs/simple_log.Origin Lon.translation
+res://logs/simple_log.Destination Lat.translation
+res://logs/simple_log.Destination Lon.translation
+res://logs/simple_log.Completed.translation
 res://scenes/main/main.tscn
 res://scenes/ui/simple_ui.tscn
-res://scripts/core/simple_logger.gd
+res://scripts/core/WebSocketManager.gd
