@@ -13,6 +13,9 @@ func create_test_drone(id: String, start: Vector3, end: Vector3, model: String) 
 	drones[id] = drone
 	add_child(drone)
 	
+	# Set collision manager reference so drone can access other drones for collision detection
+	drone.set_collision_manager_reference(self)
+	
 	# Add to visualization
 	if visualization_system:
 		visualization_system.add_drone(drone)
@@ -36,3 +39,12 @@ func remove_completed_drones():
 		var drone = drones[id]
 		drone.queue_free()  # Remove from scene
 		drones.erase(id)    # Remove from dictionary
+
+func get_all_drones() -> Dictionary:
+	"""
+	Get all active drones for collision detection
+	
+	Returns:
+		Dictionary: All active drones keyed by drone_id
+	"""
+	return drones

@@ -33,6 +33,16 @@ var destination_position: Vector3   # Final destination position
 var target_position: Vector3        # Current target position
 var target_speed: float = 0.0       # Target speed for current segment
 
+# Response waiting state
+var waiting_for_route_response: bool = false
+var route_response_timer: Timer
+
+# Collision detection system
+var collision_radius: float = 15.0  # Collision detection radius in meters - creates a 60m diameter safety zone
+var is_colliding: bool = false      # Boolean flag indicating if drone is currently in collision state
+var collision_partners: Array = []  # Array of drone IDs currently in collision with this drone
+var collision_manager_ref: Node = null  # Reference to collision manager for accessing other drones
+
 
 func initialize(id: String, start: Vector3, end: Vector3, drone_model: String):
 	"""
@@ -61,29 +71,49 @@ func initialize(id: String, start: Vector3, end: Vector3, drone_model: String):
 	returning = false
 	current_waypoint_index = 0
 	
-	WebSocketManager.send_message("Hello from Drone %s at position %s to %s" % [drone_id, str(start), str(end)])
-		 	# Send creation message to WebSocket server
-	# var websocket_manager = get_node_or_null("/root/WebSocketManager")
-	# var status = websocket_manager.get_ready_state()
-	# print("From Drone WebSocket status: ", status)
+	# Set up response timeout timer
+	route_response_timer = Timer.new()
+	route_response_timer.one_shot = true
+	route_response_timer.wait_time = 10.0  # 10 second timeout
+	route_response_timer.timeout.connect(_on_route_response_timeout)
+	add_child(route_response_timer)
 	
-	#websocket_manager.send_text_message(message)
+	# Create a dictionary with the data to include in the message
+	var message_data = {
+		"type": "request_route",
+		"drone_id": drone_id,
+		"model": model,
+		"start_position": {
+			"x": start.x,
+			"y": start.z, # in godot y is z
+			"z": start.y # in godot z is y
+		},
+		"end_position": {
+			"x": end.x, 
+			"y": end.z, # in godot y is z
+			"z": end.y # in godot z is y
+		},
+		"battery_percentage": get_battery_percentage(),
+		"max_speed": max_speed,
+		"max_range": max_range
+	}
 
-	# JSON.stringify({
-	# 	"type": "drone_created",
-	# 	"drone_id": drone_id,
-	# 	"model": model,
-	# 	"start_position": [start.x, start.y, start.z],
-	# 	"end_position": [end.x, end.y, end.z]
-	# })
+	# Convert the dictionary to a JSON string
+	var message = JSON.stringify(message_data)
 
-	# if websocket_manager.send_message(message):
-	# 	print("Sent drone creation notification for drone: " + drone_id)
+	# Connect to response signal before sending
+	if not WebSocketManager.data_received.is_connected(_on_route_response_received):
+		WebSocketManager.data_received.connect(_on_route_response_received)
 
-	# Create default route (direct flight with altitude variation)
-
-	# Create default route (direct flight with altitude variation)
-	_create_default_route(start, end)
+	# Send the JSON-formatted message
+	WebSocketManager.send_message(message)
+	
+	# Start waiting for response with timeout
+	waiting_for_route_response = true
+	route_response_timer.start()
+	
+	# Wait for response instead of creating default route immediately
+	print("Drone %s waiting for route response from server..." % drone_id)
 	
 	# Set initial target
 	if route.size() > 0:
@@ -145,7 +175,7 @@ func _create_default_route(start: Vector3, end: Vector3):
 	
 	# Calculate route parameters
 	var total_distance = start.distance_to(end)
-	var direction = (end - start).normalized()
+	var _direction = (end - start).normalized()  # Prefix with underscore to indicate intentionally unused
 	
 	# Determine cruise altitude based on drone model and distance
 	var cruise_altitude = _get_cruise_altitude_for_model()
@@ -203,13 +233,13 @@ func _get_cruise_altitude_for_model() -> float:
 	"""
 	match model:
 		"Long Range FWVTOL":
-			return 10.0    # High altitude for efficiency
+			return 50.0    # High altitude for efficiency
 		"Light Quadcopter":
-			return 10.0    # Lower altitude for regulations
+			return 50.0    # Lower altitude for regulations
 		"Heavy Quadcopter":
-			return 10.0    # Medium altitude for cargo operations
+			return 50.0    # Medium altitude for cargo operations
 		_:
-			return 10.0    # Default altitude
+			return 50.0    # Default altitude
 
 func _set_current_target():
 	"""
@@ -286,7 +316,7 @@ func update(delta: float):
 	Args:
 		delta: Time step in seconds since last update
 	"""
-	if completed:
+	if completed or waiting_for_route_response:
 		return
 	
 	# Update flight time
@@ -303,6 +333,11 @@ func update(delta: float):
 	
 	# Check completion conditions (battery, range limits)
 	_check_completion_conditions()
+	
+	# Perform collision detection if we have access to other drones
+	if collision_manager_ref and collision_manager_ref.has_method("get_all_drones"):
+		var all_drones: Dictionary = collision_manager_ref.get_all_drones()
+		check_collision_with_other_drones(all_drones)
 
 func _update_holonomic_movement(delta: float):
 	"""
@@ -375,6 +410,126 @@ func _check_completion_conditions():
 		completed = true
 		print("Drone %s exceeded maximum range" % drone_id)
 
+# Collision detection functions
+func check_collision_with_other_drones(other_drones: Dictionary):
+	"""
+	Check for collisions with other drones in the simulation
+	
+	Args:
+		other_drones: Dictionary of all active drones keyed by drone_id
+	"""
+	var previous_collision_state = is_colliding  # Store previous collision state to detect changes
+	var current_collision_partners: Array = []  # Array to track which drones this drone is colliding with
+	
+	# Reset collision state for this frame
+	is_colliding = false
+	
+	# Check distance to all other drones
+	for other_drone_id in other_drones.keys():
+		if other_drone_id == drone_id:
+			continue  # Skip self-comparison
+		
+		var other_drone: Drone = other_drones[other_drone_id]
+		
+		# Skip completed drones as they're not actively flying
+		if other_drone.completed:
+			continue
+		
+		# Calculate 3D distance between drone centers
+		var distance_between_drones: float = current_position.distance_to(other_drone.current_position)
+		
+		# Check if collision spheres overlap (sum of both radii)
+		var collision_threshold: float = collision_radius + other_drone.collision_radius
+		
+		if distance_between_drones < collision_threshold:
+			# Collision detected
+			is_colliding = true
+			current_collision_partners.append(other_drone_id)
+			
+			# Log collision event if this is a new collision
+			if not collision_partners.has(other_drone_id):
+				_handle_collision_event(other_drone, distance_between_drones)
+	
+	# Update collision partners list
+	collision_partners = current_collision_partners
+	
+	# Handle collision state changes
+	if previous_collision_state != is_colliding:
+		_handle_collision_state_change(previous_collision_state, is_colliding)
+
+func _handle_collision_event(other_drone: Drone, distance: float):
+	"""
+	Handle a new collision event between this drone and another
+	
+	Args:
+		other_drone: The Drone object this drone is colliding with
+		distance: The actual distance between the two drone centers in meters
+	"""
+	var collision_severity = "CRITICAL"  # All collisions within 30m radius are critical
+	
+	print("COLLISION DETECTED: Drone %s colliding with Drone %s at distance %.2f meters (threshold: %.2f meters) - %s" % [
+		drone_id, 
+		other_drone.drone_id, 
+		distance, 
+		collision_radius + other_drone.collision_radius,
+		collision_severity
+	])
+	
+	# Log detailed collision information
+	print("  - Drone %s position: %s, speed: %.2f m/s" % [drone_id, str(current_position), current_speed])
+	print("  - Drone %s position: %s, speed: %.2f m/s" % [other_drone.drone_id, str(other_drone.current_position), other_drone.current_speed])
+	
+	# Note: Only logging collision, no behavioral response implemented
+
+func _handle_collision_state_change(previous_state: bool, new_state: bool):
+	"""
+	Handle transitions between collision and non-collision states
+	
+	Args:
+		previous_state: Previous collision state (bool)
+		new_state: New collision state (bool)
+	"""
+	if not previous_state and new_state:
+		# Entering collision state
+		print("Drone %s ENTERING collision state with %d other drones" % [drone_id, collision_partners.size()])
+	elif previous_state and not new_state:
+		# Exiting collision state
+		print("Drone %s EXITING collision state - all clear" % drone_id)
+
+func _execute_collision_response(_other_drone: Drone):
+	"""
+	Execute collision avoidance response behavior
+	
+	Args:
+		_other_drone: The drone we're colliding with (prefixed with underscore as currently unused)
+	"""
+	# No collision response behavior - only detection and logging
+	# This function is kept for future extensibility if collision response is needed
+	pass
+
+func set_collision_manager_reference(manager_ref: Node):
+	"""
+	Set reference to collision manager for accessing other drones
+	
+	Args:
+		manager_ref: Reference to the node managing all drones (typically DroneManager)
+	"""
+	collision_manager_ref = manager_ref
+
+func get_collision_info() -> Dictionary:
+	"""
+	Get current collision status information
+	
+	Returns:
+		Dictionary containing collision state, partners, and radius
+	"""
+	return {
+		"is_colliding": is_colliding,
+		"collision_partners": collision_partners.duplicate(),  # Return copy to prevent external modification
+		"collision_radius": collision_radius,
+		"collision_partner_count": collision_partners.size()
+	}
+
 # Getter functions for accessing drone state
 func get_battery_percentage() -> float:
 	"""Returns remaining battery as percentage (0-100)"""
@@ -405,24 +560,98 @@ func get_route_info() -> Dictionary:
 		"route_waypoints": route
 	}
 
-func add_custom_waypoint(position: Vector3, altitude: float, speed: float, description: String = "Custom waypoint"):
+func _on_route_response_received(data):
 	"""
-	Add a custom waypoint to the current route
+	Handle response from WebSocket server for route requests
 	
 	Args:
-		position: 3D position of waypoint
-		altitude: Target altitude at waypoint
-		speed: Target speed to/at waypoint
-		description: Description of waypoint purpose
+		data: PackedByteArray containing the server response
 	"""
-	var waypoint = {
-		"position": Vector3(position.x, altitude, position.z),
-		"altitude": altitude,
-		"speed": min(speed, max_speed),
-		"description": description
-	}
+	var response_text = data.get_string_from_utf8()
+	print("Drone %s received response: %s" % [drone_id, response_text])
 	
-	# Insert waypoint at current position in route
-	route.insert(current_waypoint_index + 1, waypoint)
+	# Parse JSON response
+	var json = JSON.new()
+	var parse_result = json.parse(response_text)
 	
-	print("Added custom waypoint to drone %s route: %s" % [drone_id, description])
+	if parse_result != OK:
+		print("Failed to parse JSON response for drone %s" % drone_id)
+		# Fall back to default route
+		_create_default_route(origin_position, destination_position)
+		_finalize_route_setup()
+		return
+	
+	var response_data = json.data
+	
+	# Check if this response is for our drone
+	if response_data.has("drone_id") and response_data.drone_id == drone_id:
+		# Stop the timeout timer
+		if route_response_timer and not route_response_timer.is_stopped():
+			route_response_timer.stop()
+		
+		# Disconnect from signal to avoid receiving other drones' responses
+		if WebSocketManager.data_received.is_connected(_on_route_response_received):
+			WebSocketManager.data_received.disconnect(_on_route_response_received)
+		
+		if response_data.has("route") and response_data.route is Array:
+			# Use server-provided route
+			_process_server_route(response_data.route)
+		else:
+			print("No valid route in response, using default route for drone %s" % drone_id)
+			# Fall back to default route
+			_create_default_route(origin_position, destination_position)
+		
+		_finalize_route_setup()
+
+func _process_server_route(server_route: Array):
+	"""
+	Process route data received from server
+	
+	Args:
+		server_route: Array of waypoint data from server
+	"""
+	route.clear()
+	
+	for waypoint_data in server_route:
+		if waypoint_data is Dictionary:
+			var waypoint = {
+				"position": Vector3(
+					waypoint_data.get("x", 0.0),
+					waypoint_data.get("y", 10.0),  # Default altitude
+					waypoint_data.get("z", 0.0)
+				),
+				"altitude": waypoint_data.get("altitude", 10.0),
+				"speed": waypoint_data.get("speed", max_speed * 0.8),
+				"description": waypoint_data.get("description", "Server waypoint")
+			}
+			route.append(waypoint)
+	
+	print("Drone %s loaded %d waypoints from server" % [drone_id, route.size()])
+
+func _finalize_route_setup():
+	"""
+	Complete the route setup after receiving response (or timeout)
+	"""
+	waiting_for_route_response = false
+	
+	# Set initial target if we have waypoints
+	if route.size() > 0:
+		_set_current_target()
+		print("Drone %s route finalized, starting mission" % drone_id)
+	else:
+		print("Warning: Drone %s has no valid route!" % drone_id)
+		completed = true
+
+func _on_route_response_timeout():
+	"""
+	Handle timeout when no response is received from server
+	"""
+	print("Timeout waiting for route response for drone %s, using default route" % drone_id)
+	
+	# Disconnect from signal to avoid processing late responses
+	if WebSocketManager.data_received.is_connected(_on_route_response_received):
+		WebSocketManager.data_received.disconnect(_on_route_response_received)
+	
+	# Create default route as fallback
+	_create_default_route(origin_position, destination_position)
+	_finalize_route_setup()
