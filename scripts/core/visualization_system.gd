@@ -5,15 +5,25 @@ var drone_meshes: Dictionary = {}
 var enabled: bool = true
 var balloon_ref: CharacterBody3D = null  # Reference to the balloon
 
+# Terrain system components
+var terrain_gridmap: GridMap = null  # GridMap node for terrain visualization
+var gridmap_manager: GridMapManager = null  # Manager for terrain data and population
+
 # Movement and control variables
-var move_speed = 10000.0  # Speed for movement
+var move_speed = 20000.0  # Speed for movement
 var rotation_speed = 0.001  # Speed of rotation with mouse
 var mouse_sensitivity = 0.001
 var camera_offset = Vector3(0, 10, 30)  # Offset from balloon position
 var mouse_captured = false
 
 # Visualization scale factor
-var visual_scale = 0.005  # Adjust this to make the area more compact
+var visual_scale = 1  # Adjust this to make the area more compact
+
+# align_drone_to_route: bool - whether to rotate the drone visual to face its next waypoint (size: 1 boolean)
+var align_drone_to_route: bool = true
+
+# model_yaw_offset_degrees: float - additional yaw angle to correct the model's intrinsic forward axis if it is not -Z (size: 1 scalar in degrees)
+var model_yaw_offset_degrees: float = 0.0
 
 func set_enabled(enable: bool):
 	enabled = enable
@@ -23,6 +33,7 @@ func _ready():
 	setup_balloon()
 	setup_camera()
 	setup_lighting()
+	setup_terrain()
 	
 	# Set up input processing
 	set_process_input(true)
@@ -36,9 +47,51 @@ func setup_camera():
 
 func setup_lighting():
 	var light = DirectionalLight3D.new()
-	light.position = Vector3(-73000, 500, 41700)
+	light.position = Vector3(0, 100, 41700)
 	add_child(light)
-	light.look_at(Vector3(-74000, 0, 41000), Vector3.UP)
+	light.look_at(Vector3(0, 0, 41000), Vector3.DOWN)
+
+func setup_terrain():
+	"""
+	Initialize the terrain GridMap system within the visualization system
+	Creates GridMap and GridMapManager, loads terrain data, and scales appropriately
+	"""
+	print("VisualizationSystem: Setting up terrain system...")
+	
+	# Create GridMap node for terrain visualization
+	terrain_gridmap = GridMap.new()
+	terrain_gridmap.name = "TerrainGridMap"
+	
+	# Load the mesh library resource
+	var mesh_library = load("res://resources/Meshs/cell_library.meshlib")
+	if not mesh_library:
+		push_error("VisualizationSystem: Failed to load cell_library.meshlib")
+		return
+	
+	# Configure GridMap with mesh library and proper cell size
+	terrain_gridmap.mesh_library = mesh_library
+	# Apply visual scale to cell size - each cell represents 702m x 927m x 1m in world space
+	# Height dimension is 1m per grid unit to match CSV altitude values (0-400m range)
+	terrain_gridmap.cell_size = Vector3(702.0 * visual_scale, 1.0 * visual_scale, 927.0 * visual_scale)
+	
+	# Add GridMap to the visualization system
+	add_child(terrain_gridmap)
+	
+	# Create and initialize GridMapManager
+	gridmap_manager = GridMapManager.new()
+	add_child(gridmap_manager)
+	
+	# Initialize the manager with our GridMap
+	gridmap_manager.initialize_gridmap(terrain_gridmap)
+	
+	# Load terrain data and populate the GridMap
+	if gridmap_manager.load_terrain_data():
+		if gridmap_manager.populate_gridmap():
+			print("VisualizationSystem: Terrain system initialized successfully")
+		else:
+			push_error("VisualizationSystem: Failed to populate terrain GridMap")
+	else:
+		push_error("VisualizationSystem: Failed to load terrain data")
 
 func setup_balloon():
 	balloon_ref = CharacterBody3D.new()
@@ -128,20 +181,38 @@ func add_drone(drone: Drone):
 	if not enabled:
 		return
 	
-	var mesh_instance = MeshInstance3D.new()
-	var box_mesh = BoxMesh.new()
-	box_mesh.size = Vector3(100, 1, 100) * visual_scale
-	mesh_instance.mesh = box_mesh
-	
-	# Different colors for different drones
-	var material = StandardMaterial3D.new()
-	material.albedo_color = Color(randf(), randf(), randf())
-	box_mesh.material = material  # Assign material to the mesh itself
-	mesh_instance.mesh = box_mesh
-	
-	add_child(mesh_instance)
-	drone_meshes[drone.drone_id] = mesh_instance
-	
+	# drone_node: Node3D - the visual representation of the drone
+	var drone_node: Node3D = null
+	# lrvtol_scene: PackedScene - LRVTOL model from resources
+	var lrvtol_scene: PackedScene = load("res://resources/LRVTOL_UAV.glb")
+
+	# If the model loads, instance it; otherwise use a simple box as fallback
+	if lrvtol_scene:
+		# instance: Node - instantiated GLB root
+		var instance = lrvtol_scene.instantiate()
+		if instance is Node3D:
+			drone_node = instance
+			# Scale down to match map visual scale
+			drone_node.scale = Vector3(1, 1, 1) * visual_scale
+		else:
+			# Wrap non-Node3D roots under a Node3D so it can be positioned
+			drone_node = Node3D.new()
+			drone_node.add_child(instance)
+			drone_node.scale = Vector3(1, 1, 1) * visual_scale
+	else:
+		# Fallback: simple colored box
+		var fallback = MeshInstance3D.new()
+		var box_mesh = BoxMesh.new()
+		box_mesh.size = Vector3(100, 10, 100) * visual_scale
+		fallback.mesh = box_mesh
+		var material = StandardMaterial3D.new()
+		material.albedo_color = Color(randf(), randf(), randf())
+		box_mesh.material = material
+		drone_node = fallback
+
+	add_child(drone_node)
+	drone_meshes[drone.drone_id] = drone_node
+
 	print("Added visualization for drone %s" % drone.drone_id)
 
 func update_drone_position(drone: Drone):
@@ -149,7 +220,37 @@ func update_drone_position(drone: Drone):
 		return
 		
 	if drone.drone_id in drone_meshes:
-		drone_meshes[drone.drone_id].position = drone.current_position * visual_scale
+		# node: Node3D - visual node associated with this drone (size: one node reference)
+		var node: Node3D = drone_meshes[drone.drone_id]
+
+		# Update position: multiply by visual_scale to convert world meters to visualization units (size: Vector3 of 3 floats)
+		node.position = drone.current_position * visual_scale
+
+		# Optionally orient the drone to face its next waypoint so its longitudinal axis follows the route
+		if align_drone_to_route:
+			# target_pos_world: Vector3 - the next waypoint position in visualization units (size: 3 floats)
+			var target_pos_world: Vector3 = drone.target_position * visual_scale
+
+			# dir_to_target: Vector3 - direction vector from current node position to next waypoint (size: 3 floats)
+			var dir_to_target: Vector3 = target_pos_world - node.position
+
+			# Only orient when the direction vector has meaningful magnitude to avoid zero-length look_at
+			if dir_to_target.length() > 0.0001:
+				# Rotate the node so its -Z axis points toward the waypoint using global up vector
+				node.look_at(target_pos_world, Vector3.UP)
+
+				# Apply extra yaw offset if the model forward axis needs correction relative to -Z
+				if model_yaw_offset_degrees != 0.0:
+					node.rotate_y(deg_to_rad(model_yaw_offset_degrees))
+
+				# Ensure the visual forward actually faces the waypoint. If after applying the yaw offset
+				# the model's forward points away (dot < 0), flip 180 degrees around Y to correct.
+				# forward_world: Vector3 - world-space forward direction assuming -Z is forward (size: 3 floats)
+				var forward_world: Vector3 = (node.global_transform.basis.z).normalized()
+				# dir_norm: Vector3 - normalized desired direction towards the next waypoint (size: 3 floats)
+				var dir_norm: Vector3 = dir_to_target.normalized()
+				if forward_world.dot(dir_norm) < 0.0:
+					node.rotate_y(PI)
 
 func add_drone_port(dp_position: Vector3, port_id: String):
 	var mesh_instance = MeshInstance3D.new()
@@ -169,3 +270,29 @@ func move_balloon_to_port(port_position: Vector3):
 	# Optionally apply scale_factor if you use one
 	balloon_ref.global_position = port_position * visual_scale
 	# Optionally reset orientation or camera offset here
+
+func get_terrain_altitude_at_position(world_pos: Vector3) -> float:
+	"""
+	Get terrain altitude at a specific world position
+	@param world_pos: Vector3 - World position to query (in world coordinates)
+	@return float - Altitude value at that position, or -1 if terrain not ready
+	"""
+	if gridmap_manager:
+		return gridmap_manager.get_terrain_altitude_at_position(world_pos)
+	return -1.0
+
+func get_terrain_info() -> Dictionary:
+	"""
+	Get terrain system information for debugging/display purposes
+	@return Dictionary - Terrain information or empty dict if not ready
+	"""
+	if gridmap_manager:
+		return gridmap_manager.get_grid_info()
+	return {}
+
+func is_terrain_ready() -> bool:
+	"""
+	Check if the terrain system is fully initialized and ready for use
+	@return bool - True if terrain is ready, false otherwise
+	"""
+	return terrain_gridmap != null and gridmap_manager != null

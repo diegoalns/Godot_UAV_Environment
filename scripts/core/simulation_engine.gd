@@ -68,7 +68,7 @@ func _on_headless_mode_changed(enabled: bool):
 	visualization_system.set_enabled(!enabled)
 	
 func _physics_process(delta: float):
-	Engine.physics_ticks_per_second = 360  # Set to 360 physics FPS
+	Engine.physics_ticks_per_second = 30  # Set to 360 physics FPS
 	if not running:
 		return
 		
@@ -108,3 +108,22 @@ func _on_port_selected(port_id: String):
 		var lon = ports[port_id]["lon"]
 		var pos = flight_plan_manager.latlon_to_position(lat, lon)
 		visualization_system.move_balloon_to_port(pos)
+
+func get_terrain_altitude_at_position(world_pos: Vector3) -> float:
+	"""
+	Get terrain altitude at a specific world position
+	@param world_pos: Vector3 - World position to query
+	@return float - Altitude value at that position, or -1 if terrain not ready
+	"""
+	if visualization_system and visualization_system.is_terrain_ready():
+		return visualization_system.get_terrain_altitude_at_position(world_pos)
+	return -1.0
+
+func get_terrain_info() -> Dictionary:
+	"""
+	Get terrain system information for debugging/display purposes
+	@return Dictionary - Terrain information or empty dict if not ready
+	"""
+	if visualization_system and visualization_system.is_terrain_ready():
+		return visualization_system.get_terrain_info()
+	return {}
